@@ -1,3 +1,10 @@
+Modified version of https://github.com/joschu/modular_rl
+
+- added load_snapshot functionality to run_pg.py
+
+-------
+
+
 This repository implements several algorithms:
 
 - Trust Region Policy Optimization [1]

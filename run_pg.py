@@ -3,13 +3,14 @@
 This script runs a policy gradient algorithm
 """
 
-
+import sys
 from gym.envs import make
 from modular_rl import *
 import argparse, sys, cPickle
 from tabulate import tabulate
 import shutil, os, logging
 import gym
+import h5py
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -31,7 +32,17 @@ if __name__ == "__main__":
         args.timestep_limit = env_spec.timestep_limit
     cfg = args.__dict__
     np.random.seed(args.seed)
-    agent = agent_ctor(env.observation_space, env.action_space, cfg)
+
+    if args.load_snapshot:
+        print("[run_pg] Loading snapshot from %s" % args.load_snapshot)
+        hdf = h5py.File(args.load_snapshot,'r')
+        snapnames = hdf['agent_snapshots'].keys()
+        print("snapshots:\n",snapnames)
+        snapshot_to_use = snapnames[-1]
+        agent = cPickle.loads(hdf['agent_snapshots'][snapshot_to_use].value)
+        print("[run_pg] loaded %s from snapshot %s" % (agent, snapshot_to_use))
+    else:
+        agent = agent_ctor(env.observation_space, env.action_space, cfg)
     if args.use_hdf:
         hdf, diagnostics = prepare_h5_file(args)
     gym.logger.setLevel(logging.WARN)
@@ -53,6 +64,9 @@ if __name__ == "__main__":
                     diagnostics[stat].extend(val)
             if args.snapshot_every and ((COUNTER % args.snapshot_every==0) or (COUNTER==args.n_iter)):
                 hdf['/agent_snapshots/%0.4i'%COUNTER] = np.array(cPickle.dumps(agent,-1))
+                hdf.flush()
+                print("Saved snapshot at iteration=%s" % COUNTER)
+                sys.stdout.flush()
         # Plot
         if args.plot:
             animate_rollout(env, agent, min(500, args.timestep_limit))
